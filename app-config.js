@@ -1,8 +1,8 @@
 ﻿window.MINI_APP_CONFIG = {
   brand: { name: "FUJIFILM", eventName: "PHOTO EXPERIENCE 2026" },
   liff: {
-    id: "2011094337-1TOjUQpw",
-    url: "https://liff.line.me/2011094337-1TOjUQpw"
+    id: "2011094337-1TOiUQpw",
+    url: "https://liff.line.me/2011094337-1TOiUQpw"
   },
   cameras: [
     { id:"x100vi", series:"X Series", name:"X100VI", image:"./assets/camera-x100vi.jpg", note:"毎日を作品に変える、プレミアムコンパクト" },
