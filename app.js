@@ -4,23 +4,54 @@
   const app = document.getElementById("app");
   const KEY = "fujifilm-event-survey-v2";
   const saved = read();
-  const state = { screen: saved.screen || "welcome", step: saved.step || 0, answers: saved.answers || {}, error: "" };
+  const state = {
+    screen: saved.screen || "welcome",
+    step: saved.step || 0,
+    answers: saved.answers || {},
+    lineUser: saved.lineUser || null,
+    inLineClient: false,
+    error: ""
+  };
   const steps = [{ id:"favoriteCamera", type:"camera", kicker:"FAVORITE CAMERA", title:"今日いちばん気に入ったカメラはどれですか？" }, ...config.questions];
 
   render();
+  initializeLiff();
   app.addEventListener("click", onClick);
   app.addEventListener("change", onChange);
   app.addEventListener("input", onInput);
 
   function read() { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (_) { return {}; } }
-  function save() { localStorage.setItem(KEY, JSON.stringify({ screen:state.screen, step:state.step, answers:state.answers })); }
+  function save() { localStorage.setItem(KEY, JSON.stringify({ screen:state.screen, step:state.step, answers:state.answers, lineUser:state.lineUser })); }
+  async function initializeLiff() {
+    if (!config.liff?.id || !window.liff) return;
+    try {
+      await window.liff.init({ liffId: config.liff.id });
+      state.inLineClient = window.liff.isInClient();
+      if (window.liff.isLoggedIn()) {
+        const profile = await window.liff.getProfile();
+        state.lineUser = {
+          userId: profile.userId,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl || ""
+        };
+        save();
+      }
+      render();
+    } catch (error) {
+      console.warn("LIFF initialization failed:", error);
+    }
+  }
   function esc(value) { return String(value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function cameraById(id) { return config.cameras.find(camera => camera.id === id); }
   function image(camera, className="") { return `<img class="product-image ${className}" src="${esc(camera.image)}" alt="${esc(camera.name)} 実機商品画像" />`; }
   function header(back=false) { return `<header class="header"><button class="header-side" data-action="${back ? "back" : ""}" aria-label="${back ? "戻る" : ""}">${back ? "‹" : ""}</button><div><b>FUJIFILM</b><span>${esc(config.brand.eventName)}</span></div><button class="header-side" data-action="${back ? "pause" : ""}" aria-label="${back ? "中断" : ""}">${back ? "×" : ""}</button></header>`; }
 
   function render() {
-    if (state.screen === "complete") app.innerHTML = complete();
+    if (state.screen === "complete") {
+      app.innerHTML = complete();
+      const restartButton = app.querySelector('[data-action="restart"]');
+      if (state.inLineClient && restartButton) restartButton.insertAdjacentHTML("beforebegin", '<button class="primary" data-action="close">LINE\u306b\u623b\u308b <b>\u2192</b></button>');
+    }
     else if (state.screen === "survey") app.innerHTML = survey();
     else app.innerHTML = welcome();
   }
@@ -106,6 +137,7 @@
     if (action.dataset.action === "next") { const item=steps[state.step]; if (!valid(item)) { state.error="回答を選択してください。"; render(); return; } state.step++; state.error=""; save(); render(); window.scrollTo(0,0); }
     if (action.dataset.action === "submit") { state.screen="complete"; save(); render(); window.scrollTo(0,0); }
     if (action.dataset.action === "restart") { localStorage.removeItem(KEY); state.screen="welcome"; state.step=0; state.answers={}; render(); }
+    if (action.dataset.action === "close" && window.liff?.isInClient()) { window.liff.closeWindow(); }
   }
 
   function onChange(event) {
